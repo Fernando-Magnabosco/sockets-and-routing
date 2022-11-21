@@ -2,8 +2,12 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <semaphore.h>
+#include <unistd.h>
 
 #include "queue.h"
+
+#define SLEEP_TIME 1000000
+#define NO_THREADS 5
 
 typedef struct router
 {
@@ -14,6 +18,9 @@ typedef struct router
     queue *out;
     sem_t *in_sem;
     sem_t *out_sem;
+    int n_routers;
+    int *distance_vector;
+    int **neighbors_distance_vectors;
 
 } router;
 
@@ -56,6 +63,18 @@ router *init_router(int id)
         if (r->id == id)
             break;
 
+    fseek(f, 0, SEEK_SET);
+    int noLines = 0;
+    while (fgetc(f) != EOF)
+        if (fgetc(f) == '\n')
+            noLines++;
+
+    r->n_routers = noLines - 1;
+    r->distance_vector = calloc(noLines, sizeof(int));
+    r->neighbors_distance_vectors = calloc(noLines, 2 * sizeof(int *));
+    for (int i = 0; i < 2; i++)
+        r->neighbors_distance_vectors[i] = calloc(noLines, sizeof(int));
+
     fclose(f);
 
     printf("Router %d: %s:%d\n", r->id, r->ip, r->port);
@@ -65,7 +84,7 @@ router *init_router(int id)
 
 void *terminal(void *args)
 {
-    queue *outqueue = (queue *)args;
+    queue *outqueue = r->out;
 
     while (1)
     {
@@ -95,7 +114,7 @@ void *terminal(void *args)
 
 void *sender(void *args)
 {
-    queue *outqueue = (queue *)args;
+    queue *outqueue = r->out;
     struct sockaddr_in si_other;
     int s, i, slen = sizeof(si_other);
 
@@ -119,7 +138,7 @@ void *sender(void *args)
         message msg = dequeue(outqueue);
         si_other.sin_port = htons(msg.destiny);
 
-        if (sendto(s, msg.data, MSG_SIZE, 0, (struct sockaddr *)&si_other, slen) == -1)
+        if (sendto(s, &msg, sizeof(message), 0, (struct sockaddr *)&si_other, slen) == -1)
         {
             die("sendto()");
         }
@@ -129,7 +148,7 @@ void *sender(void *args)
 
 void *receiver(void *args)
 {
-    queue *inqueue = (queue *)args;
+    queue *inqueue = r->in;
     struct sockaddr_in si_me, si_other;
     int s, i, slen = sizeof(si_other), recv_len;
 
@@ -146,21 +165,72 @@ void *receiver(void *args)
 
     while (1)
     {
-        message msg;
-        memset(msg.data, '\0', MSG_SIZE);
+        message *msg = calloc(1, sizeof(message));
 
-        if ((recv_len = recvfrom(s, msg.data, MSG_SIZE, 0, (struct sockaddr *)&si_other, &slen)) == -1)
+        if ((recv_len = recvfrom(s, msg, sizeof(message), 0, (struct sockaddr *)&si_other, &slen)) == -1)
             die("recvfrom()");
 
         puts("Message received :)");
-        printf("Message: %s\n", msg.data);
-        enqueue(inqueue, msg);
+        enqueue(inqueue, *msg);
         sem_post(r->in_sem);
     }
 }
 
 void *packet_handler(void *args)
 {
+    while (1)
+    {
+        sem_wait(r->in_sem);
+        message msg = dequeue(r->in);
+        printf("Packet from %d to %d\n", msg.source, msg.destiny);
+        if (msg.type == DATA)
+            printf("Message: %s\n", msg.data);
+        else if (msg.type == CONTROL)
+        {
+
+            printf("Control message from: %d\n", msg.source);
+            int position = msg.source == r->port - 1 ? 0 : 1;
+
+            // read msg.data and update distance vector
+            int i = 0;
+            char *seek = msg.data;
+            while (seek != NULL)
+            {
+                r->neighbors_distance_vectors[position][i] = atoi(strtok(seek, " "));
+                seek = NULL;
+                i++;
+            }
+        }
+    }
+}
+
+void *send_distance_vectors(void *args)
+{
+    queue *outqueue = r->out;
+
+    while (1)
+    {
+        usleep(SLEEP_TIME);
+
+        message msg;
+        msg.type = CONTROL;
+        msg.source = r->port;
+        msg.destiny = r->port - 1;
+        char *data = malloc(MSG_SIZE);
+        memset(data, '\0', MSG_SIZE);
+        for (int i = 0; i < r->n_routers; i++)
+        {
+            char buffer[10];
+            sprintf(buffer, "%d ", r->distance_vector[i]);
+            strcat(data, buffer);
+        }
+        strcpy(msg.data, data);
+        enqueue(outqueue, msg);
+        sem_post(r->out_sem);
+        msg.destiny = r->port + 1;
+        enqueue(outqueue, msg);
+        sem_post(r->out_sem);
+    }
 }
 
 int main(int argc, char const *argv[])
@@ -174,14 +244,21 @@ int main(int argc, char const *argv[])
 
     r = init_router(atoi(argv[1]));
 
-    pthread_t threads[4];
-    void *(*func[4])(void *) = {terminal, sender, receiver, packet_handler};
-    void *args[4] = {r->out, r->out, r->in, NULL};
+    pthread_t threads[NO_THREADS];
 
-    for (int i = 0; i < 4; i++)
+    void *(*func[NO_THREADS])(void *) = {
+        terminal,
+        sender,
+        receiver,
+        packet_handler,
+        send_distance_vectors};
+
+    void *args[NO_THREADS] = {NULL, NULL, NULL, NULL};
+
+    for (int i = 0; i < NO_THREADS; i++)
         pthread_create(&threads[i], NULL, func[i], args[i]);
 
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < NO_THREADS; i++)
         pthread_join(threads[i], NULL);
 
     return 0;
