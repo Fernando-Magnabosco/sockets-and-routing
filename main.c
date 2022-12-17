@@ -5,6 +5,7 @@
 #include <unistd.h>
 
 #include "queue.h"
+#include "neighbor.h"
 
 #define SLEEP_TIME 1000000
 #define NO_THREADS 5
@@ -14,13 +15,18 @@ typedef struct router
     int id;
     int port;
     char *ip;
+
     queue *in;
     queue *out;
     sem_t *in_sem;
     sem_t *out_sem;
+
     int n_routers;
     int *distance_vector;
     int **neighbors_distance_vectors;
+
+    int no_neighbors;
+    neighbor *neighbors;
 
 } router;
 
@@ -41,50 +47,94 @@ void die(char *s)
     exit(1);
 }
 
+FILE *open_file(char *filename)
+{
+    FILE *f = fopen(filename, "r");
+    if (f == NULL)
+    {
+        printf("Error opening %s file!\n", filename);
+        exit(1);
+    }
+    return f;
+}
+
 router *init_router(int id)
 {
     router *r = malloc(sizeof(router));
-    r->id = id;
+    r->ip = malloc(16);
+
     r->in = init_queue();
     r->out = init_queue();
-    r->ip = malloc(16);
     r->in_sem = malloc(sizeof(sem_t));
     r->out_sem = malloc(sizeof(sem_t));
 
-    FILE *f = fopen("roteador.config", "r");
-    if (f == NULL)
+    r->n_routers = -1;
+    r->no_neighbors = 0;
+
+    r->neighbors = calloc(MAX_NEIGHBORS, sizeof(neighbor));
+    for (int i = 0; i < MAX_NEIGHBORS; i++)
+        r->neighbors[i].ip = malloc(16);
+
+    FILE *f;
+    neighbor n;
+    n.ip = malloc(16);
+
+    f = open_file("enlaces.config");
+
+    struct enlace
     {
-        printf("Error opening file!\n");
-        exit(1);
-    }
+        int source;
+        int destiny;
+        int cost;
+    } enlace;
 
     while (
-        fscanf(f, "%d %d %s", &r->id, &r->port, r->ip) != EOF)
-        if (r->id == id)
+        fscanf(f, "%d %d %d", &enlace.source, &enlace.destiny, &enlace.cost) != EOF)
+    {
+        if (enlace.source == id)
+        {
+            r->neighbors[r->no_neighbors].id = enlace.destiny;
+            r->neighbors[r->no_neighbors++].cost = enlace.cost;
+        }
+        else if (enlace.destiny == id)
+        {
+            r->neighbors[r->no_neighbors].id = enlace.source;
+            r->neighbors[r->no_neighbors++].cost = enlace.cost;
+        }
+
+        if (r->no_neighbors == MAX_NEIGHBORS)
             break;
-
-    fseek(f, 0, SEEK_SET);
-    int noLines = 0;
-    while (fgetc(f) != EOF)
-        if (fgetc(f) == '\n')
-            noLines++;
-
-    r->n_routers = noLines - 1;
-    r->distance_vector = calloc(noLines, sizeof(int));
-    r->neighbors_distance_vectors = calloc(noLines, 2 * sizeof(int *));
-    for (int i = 0; i < 2; i++)
-        r->neighbors_distance_vectors[i] = calloc(noLines, sizeof(int));
+    }
 
     fclose(f);
+    f = open_file("roteador.config");
+    while (
+        fscanf(f, "%d %d %s", &n.id, &n.port, n.ip) != EOF)
+    {
+        if (n.id == id)
+        {
+            r->id = n.id;
+            r->port = n.port;
+            strcpy(r->ip, n.ip);
+        }
 
-    printf("Router %d: %s:%d\n", r->id, r->ip, r->port);
+        for (int i = 0; i < r->no_neighbors; i++)
+        {
+            if (r->neighbors[i].id == n.id)
+            {
+                r->neighbors[i].port = n.port;
+                strcpy(r->neighbors[i].ip, n.ip);
+            }
+        }
+    }
+
+    fclose(f);
 
     return r;
 }
 
 void *terminal(void *args)
 {
-    queue *outqueue = r->out;
 
     while (1)
     {
@@ -92,21 +142,26 @@ void *terminal(void *args)
         char input[2];
         message msg;
 
-        puts("Send message to neighbour at the (l,r) position:");
+        puts("Send message to a neighbour:");
+        for (int i = 0; i < r->no_neighbors; i++)
+        {
+            printf("%d - %d %s:%d\n", i, r->neighbors[i].id,
+                   r->neighbors[i].ip, r->neighbors[i].port);
+        }
 
         fgets(input, 2, stdin);
         clean_stdin();
 
-        if (*input != 'l' && *input != 'r')
+        if (*input < '0' || *input - '0' >= r->no_neighbors)
             puts("Invalid input");
         else
         {
             msg.type = DATA;
             msg.source = r->port;
-            msg.destiny = *input == 'l' ? (r->port - 1) : (r->port + 1);
+            msg.destiny = r->neighbors[*input - '0'].port;
             puts("Enter message:");
             fgets(msg.data, MSG_SIZE, stdin);
-            enqueue(outqueue, msg);
+            enqueue(r->out, msg);
             sem_post(r->out_sem);
         }
     }
@@ -114,7 +169,7 @@ void *terminal(void *args)
 
 void *sender(void *args)
 {
-    queue *outqueue = r->out;
+
     struct sockaddr_in si_other;
     int s, i, slen = sizeof(si_other);
 
@@ -135,7 +190,7 @@ void *sender(void *args)
     while (1)
     {
         sem_wait(r->out_sem);
-        message msg = dequeue(outqueue);
+        message msg = dequeue(r->out);
         si_other.sin_port = htons(msg.destiny);
 
         if (sendto(s, &msg, sizeof(message), 0, (struct sockaddr *)&si_other, slen) == -1)
@@ -148,7 +203,7 @@ void *sender(void *args)
 
 void *receiver(void *args)
 {
-    queue *inqueue = r->in;
+
     struct sockaddr_in si_me, si_other;
     int s, i, slen = sizeof(si_other), recv_len;
 
@@ -171,7 +226,7 @@ void *receiver(void *args)
             die("recvfrom()");
 
         puts("Message received :)");
-        enqueue(inqueue, *msg);
+        enqueue(r->in, *msg);
         sem_post(r->in_sem);
     }
 }
@@ -206,7 +261,7 @@ void *packet_handler(void *args)
 
 void *send_distance_vectors(void *args)
 {
-    queue *outqueue = r->out;
+    r->out;
 
     while (1)
     {
@@ -215,7 +270,7 @@ void *send_distance_vectors(void *args)
         message msg;
         msg.type = CONTROL;
         msg.source = r->port;
-        msg.destiny = r->port - 1;
+        // msg.destiny = r->port - 1;
         char *data = malloc(MSG_SIZE);
         memset(data, '\0', MSG_SIZE);
         for (int i = 0; i < r->n_routers; i++)
@@ -225,10 +280,10 @@ void *send_distance_vectors(void *args)
             strcat(data, buffer);
         }
         strcpy(msg.data, data);
-        enqueue(outqueue, msg);
+        enqueue(r->out, msg);
         sem_post(r->out_sem);
-        msg.destiny = r->port + 1;
-        enqueue(outqueue, msg);
+        // msg.destiny = r->port + 1;
+        enqueue(r->out, msg);
         sem_post(r->out_sem);
     }
 }
@@ -253,7 +308,10 @@ int main(int argc, char const *argv[])
         packet_handler,
         send_distance_vectors};
 
-    void *args[NO_THREADS] = {NULL, NULL, NULL, NULL};
+    void *args[NO_THREADS];
+
+    for (int i = 0; i < NO_THREADS; i++)
+        args[i] = NULL;
 
     for (int i = 0; i < NO_THREADS; i++)
         pthread_create(&threads[i], NULL, func[i], args[i]);
