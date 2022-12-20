@@ -131,7 +131,6 @@ void *terminal(void *args)
     {
 
         char input[2];
-        message msg;
 
         puts("Send message to a neighbour:");
         for (int i = 0; i < r->no_neighbors; i++)
@@ -147,11 +146,15 @@ void *terminal(void *args)
             puts("Invalid input");
         else
         {
-            msg.type = DATA;
-            msg.source = r->port;
-            msg.destiny_port = r->neighbors[*input - '0'].port;
-            strcpy(msg.destiny_ip, r->neighbors[*input - '0'].ip);
             puts("Enter message:");
+
+            message msg = {
+                .type = DATA,
+                .source = r->port,
+                .destiny_port = r->neighbors[*input - '0'].port,
+            };
+
+            strcpy(msg.destiny_ip, r->neighbors[*input - '0'].ip);
             fgets(msg.data, MSG_SIZE, stdin);
             enqueue(r->out, msg);
         }
