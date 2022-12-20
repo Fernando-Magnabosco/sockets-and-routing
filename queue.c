@@ -5,34 +5,35 @@ queue *init_queue()
     queue *q = calloc(1, sizeof(queue));
     q->head = q->buffer;
     q->tail = q->buffer;
+    q->sem = calloc(1, sizeof(sem_t));
+    sem_init(q->sem, 0, 0);
     return q;
 }
 
-void enqueue(queue *q, message msg)
+queue_status enqueue(queue *q, message msg)
 {
+    int sem_value;
+    sem_getvalue(q->sem, &sem_value);
+    if (sem_value >= BUFFER_SIZE || q->tail->destiny_port) // queue is full
+        return QUEUE_FULL;
 
     // se a mensagem nao possui destino, presume-se que nao foi inicializada;
-    if (!q->tail->destiny)
-    {
-        *q->tail = msg;
-        q->tail++;
-        // se o tail chegou ao fim do buffer, volta para o inicio (fila circular);
-        if (q->tail == q->buffer + BUFFER_SIZE)
-            q->tail = q->buffer;
-    }
-    else
-    {
-        puts("Queue is full");
-    }
+
+    *q->tail = msg;
+    q->tail++;
+    // se o tail chegou ao fim do buffer, volta para o inicio (fila circular);
+    if (q->tail == q->buffer + BUFFER_SIZE)
+        q->tail = q->buffer;
+
+    sem_post(q->sem);
+    return QUEUE_OK;
 }
 
 message dequeue(queue *q)
 {
-    if (!q->head->destiny)
-    {
-        puts("Queue is empty");
+    sem_wait(q->sem);
+    if (!q->head->destiny_port)
         return (message){0};
-    }
     else
     {
         message msg = *q->head;
@@ -41,6 +42,7 @@ message dequeue(queue *q)
         // se o head chegou ao fim do buffer, volta para o inicio (fila circular);
         if (q->head == q->buffer + BUFFER_SIZE)
             q->head = q->buffer;
+
         return msg;
     }
 }

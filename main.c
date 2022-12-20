@@ -1,7 +1,6 @@
 #include <pthread.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
-#include <semaphore.h>
 #include <unistd.h>
 
 #include "queue.h"
@@ -14,12 +13,10 @@ typedef struct router
 {
     int id;
     int port;
-    char *ip;
+    char ip[16];
 
     queue *in;
     queue *out;
-    sem_t *in_sem;
-    sem_t *out_sem;
 
     int n_routers;
     int *distance_vector;
@@ -61,23 +58,17 @@ FILE *open_file(char *filename)
 router *init_router(int id)
 {
     router *r = malloc(sizeof(router));
-    r->ip = malloc(16);
 
     r->in = init_queue();
     r->out = init_queue();
-    r->in_sem = malloc(sizeof(sem_t));
-    r->out_sem = malloc(sizeof(sem_t));
 
     r->n_routers = -1;
     r->no_neighbors = 0;
 
     r->neighbors = calloc(MAX_NEIGHBORS, sizeof(neighbor));
-    for (int i = 0; i < MAX_NEIGHBORS; i++)
-        r->neighbors[i].ip = malloc(16);
 
     FILE *f;
     neighbor n;
-    n.ip = malloc(16);
 
     f = open_file("enlaces.config");
 
@@ -158,11 +149,11 @@ void *terminal(void *args)
         {
             msg.type = DATA;
             msg.source = r->port;
-            msg.destiny = r->neighbors[*input - '0'].port;
+            msg.destiny_port = r->neighbors[*input - '0'].port;
+            strcpy(msg.destiny_ip, r->neighbors[*input - '0'].ip);
             puts("Enter message:");
             fgets(msg.data, MSG_SIZE, stdin);
             enqueue(r->out, msg);
-            sem_post(r->out_sem);
         }
     }
 }
@@ -181,23 +172,23 @@ void *sender(void *args)
     memset((char *)&si_other, 0, sizeof(si_other));
     si_other.sin_family = AF_INET;
 
-    if (inet_aton(r->ip, &si_other.sin_addr) == 0)
-    {
-        fprintf(stderr, "inet_aton() failed\n");
-        exit(1);
-    }
-
     while (1)
     {
-        sem_wait(r->out_sem);
+
         message msg = dequeue(r->out);
-        si_other.sin_port = htons(msg.destiny);
+        si_other.sin_port = htons(msg.destiny_port);
+
+        if (inet_aton(msg.destiny_ip, &si_other.sin_addr) == 0)
+        {
+            fprintf(stderr, "inet_aton() failed\n");
+            exit(1);
+        }
 
         if (sendto(s, &msg, sizeof(message), 0, (struct sockaddr *)&si_other, slen) == -1)
         {
             die("sendto()");
         }
-        printf("Sent packet to %s:%d\n", r->ip, msg.destiny);
+        // printf("Sent packet to %s:%d\n", msg.destiny_ip, msg.destiny_port);
     }
 }
 
@@ -227,7 +218,6 @@ void *receiver(void *args)
 
         puts("Message received :)");
         enqueue(r->in, *msg);
-        sem_post(r->in_sem);
     }
 }
 
@@ -235,44 +225,42 @@ void *packet_handler(void *args)
 {
     while (1)
     {
-        sem_wait(r->in_sem);
         message msg = dequeue(r->in);
-        printf("Packet from %d to %d\n", msg.source, msg.destiny);
+        printf("Packet from %d to %d\n", msg.source, msg.destiny_port);
         if (msg.type == DATA)
             printf("Message: %s\n", msg.data);
         else if (msg.type == CONTROL)
         {
 
             printf("Control message from: %d\n", msg.source);
-            int position = msg.source == r->port - 1 ? 0 : 1;
+            // int position = msg.source == r->port - 1 ? 0 : 1;
 
-            // read msg.data and update distance vector
-            int i = 0;
-            char *seek = msg.data;
-            while (seek != NULL)
-            {
-                r->neighbors_distance_vectors[position][i] = atoi(strtok(seek, " "));
-                seek = NULL;
-                i++;
-            }
+            // // read msg.data and update distance vector
+            // int i = 0;
+            // char *seek = msg.data;
+            // while (seek != NULL)
+            // {
+            //     r->neighbors_distance_vectors[position][i] = atoi(strtok(seek, " "));
+            //     seek = NULL;
+            //     i++;
+            // }
         }
     }
 }
 
 void *send_distance_vectors(void *args)
 {
-    r->out;
+
+    char data[MSG_SIZE];
+    message msg;
+    msg.type = CONTROL;
+    msg.source = r->port;
 
     while (1)
     {
         usleep(SLEEP_TIME);
-
-        message msg;
-        msg.type = CONTROL;
-        msg.source = r->port;
-        // msg.destiny = r->port - 1;
-        char *data = malloc(MSG_SIZE);
         memset(data, '\0', MSG_SIZE);
+
         for (int i = 0; i < r->n_routers; i++)
         {
             char buffer[10];
@@ -280,11 +268,15 @@ void *send_distance_vectors(void *args)
             strcat(data, buffer);
         }
         strcpy(msg.data, data);
-        enqueue(r->out, msg);
-        sem_post(r->out_sem);
-        // msg.destiny = r->port + 1;
-        enqueue(r->out, msg);
-        sem_post(r->out_sem);
+
+        for (int i = 0; i < r->no_neighbors; i++)
+        {
+            msg.destiny_port = r->neighbors[i].port;
+            strcpy(msg.destiny_ip, r->neighbors[i].ip);
+
+            if (enqueue(r->out, msg) == QUEUE_FULL)
+                break;
+        }
     }
 }
 

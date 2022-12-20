@@ -5,6 +5,6 @@ typedef struct neighbor
     int id;
     int port;
     int cost;
-    char *ip;
+    char ip[16];
 
 } neighbor;
