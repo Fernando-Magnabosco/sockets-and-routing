@@ -2,7 +2,6 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <unistd.h>
-
 #include "queue.h"
 #include "neighbor.h"
 
@@ -27,7 +26,7 @@ typedef struct router
 
 } router;
 
-router *r;
+router r;
 
 void clean_stdin(void)
 {
@@ -55,17 +54,17 @@ FILE *open_file(char *filename)
     return f;
 }
 
-router *init_router(int id)
+void init_router(int id)
 {
-    router *r = malloc(sizeof(router));
 
-    r->in = init_queue();
-    r->out = init_queue();
+    r.in = init_queue();
+    r.out = init_queue();
 
-    r->n_routers = -1;
-    r->no_neighbors = 0;
+    r.id = -1;
+    r.n_routers = -1;
+    r.no_neighbors = 0;
 
-    r->neighbors = calloc(MAX_NEIGHBORS, sizeof(neighbor));
+    r.neighbors = calloc(MAX_NEIGHBORS, sizeof(neighbor));
 
     FILE *f;
     neighbor n;
@@ -84,16 +83,16 @@ router *init_router(int id)
     {
         if (enlace.source == id)
         {
-            r->neighbors[r->no_neighbors].id = enlace.destiny;
-            r->neighbors[r->no_neighbors++].cost = enlace.cost;
+            r.neighbors[r.no_neighbors].id = enlace.destiny;
+            r.neighbors[r.no_neighbors++].cost = enlace.cost;
         }
         else if (enlace.destiny == id)
         {
-            r->neighbors[r->no_neighbors].id = enlace.source;
-            r->neighbors[r->no_neighbors++].cost = enlace.cost;
+            r.neighbors[r.no_neighbors].id = enlace.source;
+            r.neighbors[r.no_neighbors++].cost = enlace.cost;
         }
 
-        if (r->no_neighbors == MAX_NEIGHBORS)
+        if (r.no_neighbors == MAX_NEIGHBORS)
             break;
     }
 
@@ -104,24 +103,29 @@ router *init_router(int id)
     {
         if (n.id == id)
         {
-            r->id = n.id;
-            r->port = n.port;
-            strcpy(r->ip, n.ip);
+            r.id = n.id;
+            r.port = n.port;
+            strcpy(r.ip, n.ip);
         }
 
-        for (int i = 0; i < r->no_neighbors; i++)
+        for (int i = 0; i < r.no_neighbors; i++)
         {
-            if (r->neighbors[i].id == n.id)
+            if (r.neighbors[i].id == n.id)
             {
-                r->neighbors[i].port = n.port;
-                strcpy(r->neighbors[i].ip, n.ip);
+                r.neighbors[i].port = n.port;
+                strcpy(r.neighbors[i].ip, n.ip);
             }
         }
     }
 
     fclose(f);
+    if (r.id == -1)
+    {
+        printf("Router %d not found!\n", id);
+        exit(1);
+    }
 
-    return r;
+    return;
 }
 
 void *terminal(void *args)
@@ -133,16 +137,16 @@ void *terminal(void *args)
         char input[2];
 
         puts("Send message to a neighbour:");
-        for (int i = 0; i < r->no_neighbors; i++)
+        for (int i = 0; i < r.no_neighbors; i++)
         {
-            printf("%d - %d %s:%d\n", i, r->neighbors[i].id,
-                   r->neighbors[i].ip, r->neighbors[i].port);
+            printf("%d - %d %s:%d\n", i, r.neighbors[i].id,
+                   r.neighbors[i].ip, r.neighbors[i].port);
         }
 
         fgets(input, 2, stdin);
         clean_stdin();
 
-        if (*input < '0' || *input - '0' >= r->no_neighbors)
+        if (*input < '0' || *input - '0' >= r.no_neighbors)
             puts("Invalid input");
         else
         {
@@ -150,13 +154,13 @@ void *terminal(void *args)
 
             message msg = {
                 .type = DATA,
-                .source = r->port,
-                .destiny_port = r->neighbors[*input - '0'].port,
+                .source = r.port,
+                .destiny_port = r.neighbors[*input - '0'].port,
             };
 
-            strcpy(msg.destiny_ip, r->neighbors[*input - '0'].ip);
+            strcpy(msg.destiny_ip, r.neighbors[*input - '0'].ip);
             fgets(msg.data, MSG_SIZE, stdin);
-            enqueue(r->out, msg);
+            enqueue(r.out, msg);
         }
     }
 }
@@ -178,7 +182,7 @@ void *sender(void *args)
     while (1)
     {
 
-        message msg = dequeue(r->out);
+        message msg = dequeue(r.out);
         si_other.sin_port = htons(msg.destiny_port);
 
         if (inet_aton(msg.destiny_ip, &si_other.sin_addr) == 0)
@@ -206,21 +210,23 @@ void *receiver(void *args)
 
     memset((char *)&si_me, 0, sizeof(si_me));
     si_me.sin_family = AF_INET;
-    si_me.sin_port = htons(r->port);
+    si_me.sin_port = htons(r.port);
     si_me.sin_addr.s_addr = htonl(INADDR_ANY);
 
     if (bind(s, (struct sockaddr *)&si_me, sizeof(si_me)) == -1)
         die("bind");
 
+    message msg;
+
     while (1)
     {
-        message *msg = calloc(1, sizeof(message));
+        memset(&msg, 0, sizeof(message));
 
-        if ((recv_len = recvfrom(s, msg, sizeof(message), 0, (struct sockaddr *)&si_other, &slen)) == -1)
+        if ((recv_len = recvfrom(s, &msg, sizeof(message), 0, (struct sockaddr *)&si_other, &slen)) == -1)
             die("recvfrom()");
 
         puts("Message received :)");
-        enqueue(r->in, *msg);
+        enqueue(r.in, msg);
     }
 }
 
@@ -228,7 +234,7 @@ void *packet_handler(void *args)
 {
     while (1)
     {
-        message msg = dequeue(r->in);
+        message msg = dequeue(r.in);
         printf("Packet from %d to %d\n", msg.source, msg.destiny_port);
         if (msg.type == DATA)
             printf("Message: %s\n", msg.data);
@@ -236,14 +242,14 @@ void *packet_handler(void *args)
         {
 
             printf("Control message from: %d\n", msg.source);
-            // int position = msg.source == r->port - 1 ? 0 : 1;
+            // int position = msg.source == r.port - 1 ? 0 : 1;
 
             // // read msg.data and update distance vector
             // int i = 0;
             // char *seek = msg.data;
             // while (seek != NULL)
             // {
-            //     r->neighbors_distance_vectors[position][i] = atoi(strtok(seek, " "));
+            //     r.neighbors_distance_vectors[position][i] = atoi(strtok(seek, " "));
             //     seek = NULL;
             //     i++;
             // }
@@ -257,27 +263,27 @@ void *send_distance_vectors(void *args)
     char data[MSG_SIZE];
     message msg;
     msg.type = CONTROL;
-    msg.source = r->port;
+    msg.source = r.port;
 
     while (1)
     {
         usleep(SLEEP_TIME);
         memset(data, '\0', MSG_SIZE);
 
-        for (int i = 0; i < r->n_routers; i++)
+        for (int i = 0; i < r.n_routers; i++)
         {
             char buffer[10];
-            sprintf(buffer, "%d ", r->distance_vector[i]);
+            sprintf(buffer, "%d ", r.distance_vector[i]);
             strcat(data, buffer);
         }
         strcpy(msg.data, data);
 
-        for (int i = 0; i < r->no_neighbors; i++)
+        for (int i = 0; i < r.no_neighbors; i++)
         {
-            msg.destiny_port = r->neighbors[i].port;
-            strcpy(msg.destiny_ip, r->neighbors[i].ip);
+            msg.destiny_port = r.neighbors[i].port;
+            strcpy(msg.destiny_ip, r.neighbors[i].ip);
 
-            if (enqueue(r->out, msg) == QUEUE_FULL)
+            if (enqueue(r.out, msg) == QUEUE_FULL)
                 break;
         }
     }
@@ -292,7 +298,7 @@ int main(int argc, char const *argv[])
         return 1;
     }
 
-    r = init_router(atoi(argv[1]));
+    init_router(atoi(argv[1]));
 
     pthread_t threads[NO_THREADS];
 
