@@ -1,3 +1,6 @@
+#ifndef MESSAGE_H
+#define MESSAGE_H
+
 #define MSG_SIZE 100
 
 enum msg_type
@@ -15,3 +18,5 @@ typedef struct message
     char destiny_ip[16];
     char data[MSG_SIZE];
 } message;
+
+#endif

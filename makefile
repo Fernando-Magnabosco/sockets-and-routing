@@ -1,2 +1,4 @@
 make: 
-	gcc main.c queue.c -o router -lpthread
+	gcc main.c \
+	src/*.c \
+	-o router -lpthread
