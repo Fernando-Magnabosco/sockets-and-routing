@@ -2,7 +2,8 @@
 #define ROUTER_H
 
 #include "queue.h"
-#include "neighbor.h"
+#include "int_list.h"
+#include "other_routers.h"
 
 typedef struct router
 {
@@ -13,8 +14,8 @@ typedef struct router
     queue *in;
     queue *out;
 
-    int no_neighbors;
-    neighbor *neighbors;
+    int_list *neighbor_list;
+    other_router other_routers[NETWORK_SIZE];
 
 } router;
 

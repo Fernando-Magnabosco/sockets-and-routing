@@ -7,18 +7,21 @@ void *terminal(void *args)
     {
 
         char input[2];
+        int enumerator = 0;
 
         puts("Send message to a neighbour:");
-
-        for (int i = 0; i < r.no_neighbors; i++)
+        for (int_list *iterator = r.neighbor_list; iterator; iterator = iterator->next)
         {
-            printf("%d - %d %s:%d\n", i, r.neighbors[i].id,
-                   r.neighbors[i].ip, r.neighbors[i].port);
+            printf("%d - %d %s:%d\n", enumerator++,
+                   iterator->value,
+                   r.other_routers[iterator->value].connection.network_info.ip,
+                   r.other_routers[iterator->value].connection.network_info.port);
         }
+
         fgets(input, 2, stdin);
         clean_stdin();
 
-        if (*input < '0' || *input - '0' >= r.no_neighbors)
+        if (*input < '0' || *input - '0' >= NETWORK_SIZE)
             puts("Invalid input");
         else
         {
@@ -27,10 +30,9 @@ void *terminal(void *args)
             message msg = {
                 .type = DATA,
                 .source = r.port,
-                .destiny_port = r.neighbors[*input - '0'].port,
-            };
+                .destiny_port = r.other_routers[*input - '0'].connection.network_info.port};
 
-            strcpy(msg.destiny_ip, r.neighbors[*input - '0'].ip);
+            strcpy(msg.destiny_ip, r.other_routers[*input - '0'].connection.network_info.ip);
             fgets(msg.data, MSG_SIZE, stdin);
             enqueue(r.out, msg);
         }

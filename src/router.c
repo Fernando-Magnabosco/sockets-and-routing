@@ -6,17 +6,17 @@ void init_router(int id)
     r.out = init_queue();
 
     r.id = -1;
-    r.no_neighbors = 0;
+    r.neighbor_list = init_int_list();
 
-    r.neighbors = calloc(MAX_NEIGHBORS, sizeof(neighbor));
-    for (int i = 0; i < MAX_NEIGHBORS; i++)
+    for (int i = 0; i < NETWORK_SIZE; i++)
     {
-        r.neighbors[i].distance_vector = malloc(MAX_NEIGHBORS * sizeof(neighbor));
-        memset(r.neighbors[i].distance_vector, -1, MAX_NEIGHBORS * sizeof(neighbor));
+        r.other_routers[i].id = -1;
+        r.other_routers[i].cost = -1;
+        r.other_routers[i].is_neighbor = false;
     }
 
     FILE *f;
-    neighbor n;
+    other_router o;
 
     f = open_file("enlaces.config");
 
@@ -30,43 +30,42 @@ void init_router(int id)
     while (
         fscanf(f, "%d %d %d", &enlace.source, &enlace.destiny, &enlace.cost) != EOF)
     {
-        if (enlace.source == id)
-        {
-            r.neighbors[r.no_neighbors].id = enlace.destiny;
-            r.neighbors[r.no_neighbors++].cost = enlace.cost;
-        }
-        else if (enlace.destiny == id)
-        {
-            r.neighbors[r.no_neighbors].id = enlace.source;
-            r.neighbors[r.no_neighbors++].cost = enlace.cost;
-        }
+        int addTo = -1;
 
-        if (r.no_neighbors == MAX_NEIGHBORS)
-            break;
+        if (enlace.source == id)
+            addTo = enlace.destiny;
+        else if (enlace.destiny == id)
+            addTo = enlace.source;
+        else
+            continue;
+
+        r.neighbor_list = add_int(r.neighbor_list, addTo);
+        r.other_routers[addTo].id = addTo;
+        r.other_routers[addTo].cost = enlace.cost;
+        r.other_routers[addTo].is_neighbor = true;
     }
 
     fclose(f);
     f = open_file("roteador.config");
     while (
-        fscanf(f, "%d %d %s", &n.id, &n.port, n.ip) != EOF)
+        fscanf(f, "%d %d %s", &o.id, &o.connection.network_info.port, o.connection.network_info.ip) != EOF)
     {
-        if (n.id == id)
+        if (o.id == id)
         {
-            r.id = n.id;
-            r.port = n.port;
-            strcpy(r.ip, n.ip);
+            r.id = o.id;
+            r.port = o.connection.network_info.port;
+            strcpy(r.ip, o.connection.network_info.ip);
         }
 
-        for (int i = 0; i < r.no_neighbors; i++)
+        for (int_list *iterator = r.neighbor_list; iterator != NULL; iterator = iterator->next)
         {
-            if (r.neighbors[i].id == n.id)
+            if (iterator->value == o.id)
             {
-                r.neighbors[i].port = n.port;
-                strcpy(r.neighbors[i].ip, n.ip);
+                r.other_routers[o.id].connection.network_info.port = o.connection.network_info.port;
+                strcpy(r.other_routers[o.id].connection.network_info.ip, o.connection.network_info.ip);
             }
         }
     }
-
     fclose(f);
     if (r.id == -1)
         die("Router not found");
@@ -101,8 +100,11 @@ FILE *open_file(char *filename)
     FILE *f = fopen(path, "r");
     if (f == NULL)
     {
-        printf("Error opening %s file!\n", path);
-        exit(1);
+        char *template = "Error opening %s file!\n";
+        int len = strlen(template) + strlen(path) + 1;
+        char msg[len];
+        snprintf(msg, len, template, path);
+        die(msg);
     }
     return f;
 }

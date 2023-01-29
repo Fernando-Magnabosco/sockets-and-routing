@@ -1,5 +1,4 @@
 #include "../headers/router.h"
-
 #include <arpa/inet.h>
 
 void *sender(void *args)
