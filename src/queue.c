@@ -2,7 +2,8 @@
 
 queue *init_queue()
 {
-    queue *q = calloc(1, sizeof(queue));
+    queue *q = malloc(sizeof(queue));
+    memset(q->buffer, -1, sizeof(message) * BUFFER_SIZE);
     q->head = q->buffer;
     q->tail = q->buffer;
     q->sem = calloc(1, sizeof(sem_t));
@@ -14,7 +15,7 @@ queue_status enqueue(queue *q, message msg)
 {
     int sem_value;
     sem_getvalue(q->sem, &sem_value);
-    if (sem_value >= BUFFER_SIZE || q->tail->destiny_port) // queue is full
+    if (sem_value >= BUFFER_SIZE || q->tail->destiny_id != -1) // queue is full
         return QUEUE_FULL;
 
     // se a mensagem nao possui destino, presume-se que nao foi inicializada;
@@ -32,7 +33,7 @@ queue_status enqueue(queue *q, message msg)
 message dequeue(queue *q)
 {
     sem_wait(q->sem);
-    if (!q->head->destiny_port)
+    if (q->head->destiny_id == -1)
         return (message){0};
     else
     {

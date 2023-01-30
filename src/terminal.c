@@ -30,9 +30,10 @@ void *terminal(void *args)
             message msg = {
                 .type = DATA,
                 .source = r.port,
-                .destiny_port = r.other_routers[*input - '0'].connection.network_info.port};
+                .destiny_id = *input - '0',
+                .sequence = 0,
+            };
 
-            strcpy(msg.destiny_ip, r.other_routers[*input - '0'].connection.network_info.ip);
             fgets(msg.data, MSG_SIZE, stdin);
             enqueue(r.out, msg);
         }

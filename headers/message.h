@@ -10,12 +10,19 @@ enum msg_type
     DATA
 };
 
+enum control_type
+{
+    DISCONNECT,
+    DISTANCE_VECTOR
+};
+
 typedef struct message
 {
     enum msg_type type;
     int source;
-    int destiny_port;
-    char destiny_ip[16];
+    int sequence;
+    int destiny_id;
+
     char data[MSG_SIZE];
 } message;
 

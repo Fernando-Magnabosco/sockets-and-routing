@@ -19,9 +19,25 @@ void *sender(void *args)
     {
 
         message msg = dequeue(r.out);
-        si_other.sin_port = htons(msg.destiny_port);
+        msg.sequence++;
 
-        if (inet_aton(msg.destiny_ip, &si_other.sin_addr) == 0)
+        int port;
+        char *ip;
+
+        if (r.other_routers[msg.destiny_id].is_neighbor)
+        {
+            port = r.other_routers[msg.destiny_id].connection.network_info.port;
+            ip = r.other_routers[msg.destiny_id].connection.network_info.ip;
+        }
+        else
+        {
+            port = r.other_routers[r.other_routers[msg.destiny_id].connection.source].connection.network_info.port;
+            ip = r.other_routers[r.other_routers[msg.destiny_id].connection.source].connection.network_info.ip;
+        }
+
+        si_other.sin_port = htons(port);
+
+        if (inet_aton(ip, &si_other.sin_addr) == 0)
         {
             fprintf(stderr, "inet_aton() failed\n");
             exit(1);

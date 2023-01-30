@@ -57,13 +57,10 @@ void init_router(int id)
             strcpy(r.ip, o.connection.network_info.ip);
         }
 
-        for (int_list *iterator = r.neighbor_list; iterator != NULL; iterator = iterator->next)
+        if (in(r.neighbor_list, o.id))
         {
-            if (iterator->value == o.id)
-            {
-                r.other_routers[o.id].connection.network_info.port = o.connection.network_info.port;
-                strcpy(r.other_routers[o.id].connection.network_info.ip, o.connection.network_info.ip);
-            }
+            r.other_routers[o.id].connection.network_info.port = o.connection.network_info.port;
+            strcpy(r.other_routers[o.id].connection.network_info.ip, o.connection.network_info.ip);
         }
     }
     fclose(f);

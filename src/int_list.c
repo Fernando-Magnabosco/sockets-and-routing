@@ -1,5 +1,6 @@
 #include "../headers/int_list.h"
 #include <stdlib.h>
+#include <stdbool.h>
 
 int_list *init_int_list()
 {
@@ -57,4 +58,14 @@ int_list *remove_int(int_list *list, int value)
         }
         return list;
     }
+}
+
+int in(int_list *list, int value)
+{
+    for (int_list *iterator = list; iterator != NULL; iterator = iterator->next)
+    {
+        if (iterator->value == value)
+            return true;
+    }
+    return false;
 }
