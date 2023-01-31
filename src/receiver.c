@@ -1,7 +1,3 @@
-#include <arpa/inet.h>
-#include <string.h>
-#include <stdio.h>
-
 #include "../headers/router.h"
 
 void *receiver(void *args)
@@ -31,7 +27,7 @@ void *receiver(void *args)
             die("recvfrom()");
 
         char log[100];
-        sprintf(log, "Received packet from %d\n", msg.source);
+        sprintf(log, "Received packet from %d", msg.source);
         write_to_log(log);
         enqueue(r.in, msg);
     }

@@ -1,6 +1,4 @@
 #include "../headers/router.h"
-#include <stdio.h>
-
 
 void disconnect(int id)
 {

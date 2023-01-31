@@ -1,30 +1,35 @@
 #include "../headers/router.h"
-#include <arpa/inet.h>
-#include <unistd.h>
 
 #define DISTANCE_VECTOR_DELAY 1000000
 
 void *send_distance_vectors(void *args)
 {
+    message msg = {
+        .type = CONTROL,
+        .source = r.id,
+        .destiny_id = -1,
+        .sequence = 0,
+    };
+    
     while (1)
     {
         usleep(DISTANCE_VECTOR_DELAY);
-        message msg = {
-            .type = CONTROL,
-            .source = r.id,
-            .destiny_id = -1,
-            .sequence = 0,
-        };
+
+        strcpy(msg.data, "");
+        sprintf(msg.data, "%d\n", DISTANCE_VECTOR);
+        for (int i = 0; i < NETWORK_SIZE; i++)
+        {
+            if (strlen(msg.data) + strlen("%d %d\n") > MSG_SIZE)
+                break;
+
+            if (r.other_routers[i].id != -1)
+                sprintf(msg.data + strlen(msg.data), "%d %d\n",
+                        r.other_routers[i].id, r.other_routers[i].cost);
+        }
 
         for (int_list *iterator = r.neighbor_list; iterator; iterator = iterator->next)
         {
             msg.destiny_id = iterator->value;
-            sprintf(msg.data, "%d\n", DISTANCE_VECTOR);
-            for (int i = 0; i < NETWORK_SIZE; i++)
-                if (r.other_routers[i].id != -1)
-                    sprintf(msg.data + strlen(msg.data), "%d %d\n",
-                            r.other_routers[i].id, r.other_routers[i].cost);
-
             enqueue(r.out, msg);
         }
     }

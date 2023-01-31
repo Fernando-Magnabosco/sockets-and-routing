@@ -6,6 +6,12 @@
 #include "logs.h"
 #include "other_routers.h"
 
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <string.h>
+#include <stdio.h>
+#include <pthread.h>
+
 typedef struct router
 {
     int id;
@@ -15,6 +21,7 @@ typedef struct router
     queue *in;
     queue *out;
 
+    pthread_mutex_t log_lock;
     logs log;
 
     int_list *neighbor_list;
@@ -33,6 +40,7 @@ void init_router(int id);
 
 FILE *open_file(char *folder, char *filename, char *mode);
 void write_to_log(char *s);
+void append_logs();
 void die(char *s);
 void clean_stdin(void);
 

@@ -7,7 +7,7 @@
 #include "message.h"
 #include <semaphore.h>
 
-#define BUFFER_SIZE 512
+#define BUFFER_SIZE 12
 
 typedef struct queue
 {

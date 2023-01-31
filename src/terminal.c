@@ -1,6 +1,6 @@
 #include "../headers/router.h"
 
-#define NO_OPTIONS 4
+#define NO_OPTIONS 5
 
 void list_neighbors()
 {
@@ -65,15 +65,21 @@ void show_logs()
         printf("%c", r.log.log[i]);
 }
 
+void exit_router()
+{
+    exit(0);
+}
+
 void menu()
 {
     printf("\n");
     char *options[NO_OPTIONS] = {"List neighbors",
                                  "List routing table",
                                  "Send message",
-                                 "Show logs"};
+                                 "Show logs",
+                                 "Exit"};
 
-    void (*functions[NO_OPTIONS])(void) = {list_neighbors, list_routing_table, send_message, show_logs};
+    void (*functions[NO_OPTIONS])(void) = {list_neighbors, list_routing_table, send_message, show_logs, exit_router};
 
     for (int i = 0; i < NO_OPTIONS; i++)
         printf("%d - %s\n", i, options[i]);

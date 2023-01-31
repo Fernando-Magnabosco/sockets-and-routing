@@ -1,6 +1,4 @@
 #include "../headers/int_list.h"
-#include <stdlib.h>
-#include <stdbool.h>
 
 int_list *init_int_list()
 {

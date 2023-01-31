@@ -19,7 +19,6 @@ queue_status enqueue(queue *q, message msg)
         return QUEUE_FULL;
 
     // se a mensagem nao possui destino, presume-se que nao foi inicializada;
-
     *q->tail = msg;
     q->tail++;
     // se o tail chegou ao fim do buffer, volta para o inicio (fila circular);
@@ -38,7 +37,7 @@ message dequeue(queue *q)
     else
     {
         message msg = *q->head;
-        memset(q->head, 0, sizeof(message)); // limpa a mensagem
+        memset(q->head, -1, sizeof(message)); // limpa a mensagem
         q->head++;
         // se o head chegou ao fim do buffer, volta para o inicio (fila circular);
         if (q->head == q->buffer + BUFFER_SIZE)
