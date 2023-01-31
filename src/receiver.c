@@ -30,7 +30,9 @@ void *receiver(void *args)
         if ((recv_len = recvfrom(s, &msg, sizeof(message), 0, (struct sockaddr *)&si_other, &slen)) == -1)
             die("recvfrom()");
 
-        puts("Message received :)");
+        char log[100];
+        sprintf(log, "Received packet from %d\n", msg.source);
+        write_to_log(log);
         enqueue(r.in, msg);
     }
 }

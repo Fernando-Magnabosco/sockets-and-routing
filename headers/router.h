@@ -3,6 +3,7 @@
 
 #include "queue.h"
 #include "int_list.h"
+#include "logs.h"
 #include "other_routers.h"
 
 typedef struct router
@@ -13,6 +14,8 @@ typedef struct router
 
     queue *in;
     queue *out;
+
+    logs log;
 
     int_list *neighbor_list;
     other_router other_routers[NETWORK_SIZE];
@@ -28,7 +31,8 @@ void *receiver(void *args);
 void *send_distance_vectors(void *args);
 void init_router(int id);
 
-FILE *open_file(char *filename);
+FILE *open_file(char *folder, char *filename, char *mode);
+void write_to_log(char *s);
 void die(char *s);
 void clean_stdin(void);
 

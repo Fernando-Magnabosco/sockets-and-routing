@@ -11,7 +11,7 @@ void disconnect(int id)
 
     for(int i = 0; i < NETWORK_SIZE; i++)
     {
-        if(r.other_routers[i].connection.source == id)
+        if (r.other_routers[i].source == id)
         {
             r.other_routers[i].id = -1;
             r.other_routers[i].cost = -1;
@@ -22,25 +22,53 @@ void disconnect(int id)
 
 void update_distance_vector(message msg)
 {
-    //
+
+    int id, cost;
+
+    char *token = strtok(msg.data + 2, "\n");
+    while (token != NULL)
+    {
+
+        sscanf(token, "%d %d", &id, &cost);
+        if (r.other_routers[id].id == -1)
+            r.other_routers[id] = (other_router){
+                .id = id,
+                .cost = cost,
+                .source = msg.source,
+                .is_neighbor = false};
+        else
+        {
+            if (r.other_routers[id].source == msg.source)
+                r.other_routers[id].cost = cost;
+            else if (r.other_routers[id].cost > cost + r.other_routers[msg.source].cost)
+            {
+                r.other_routers[id].cost = cost + r.other_routers[msg.source].cost;
+                r.other_routers[id].source = msg.source;
+            }
+        }
+        token = strtok(NULL, "\n");
+    }
 }
 
  
 void handle_control_message(message msg)
 {
     int type;
+    char log[100];
     sscanf(msg.data, "%d", &type);
     switch(type)
     {
         
         case DISCONNECT:
-            printf("Disconnecting from %d\n", msg.source);
-            disconnect(msg.source);
-            break;
+        sprintf(log, "Disconnecting from %d", msg.source);
+        write_to_log(log);
+        disconnect(msg.source);
+        break;
         case DISTANCE_VECTOR:
-            printf("Distance vector from %d\n", msg.source);
-            update_distance_vector(msg);
-            break;
+        sprintf(log, "Distance vector from %d", msg.source);
+        write_to_log(log);
+        update_distance_vector(msg);
+        break;
         default:
             die("Unknown control message");
     }
@@ -60,11 +88,14 @@ void *packet_handler(void *args)
     {
 
         message msg = dequeue(r.in);
-        printf("Packet from %d to %d\n", msg.source, msg.destiny_id);
+        char *log = malloc(sizeof(char) * 100);
+        sprintf(log, "Packet from %d to %d", msg.source, msg.destiny_id);
+        write_to_log(log);
+
         if (msg.destiny_id != r.id)
         {
             enqueue(r.out, msg);
-            return;
+            continue;
         }
         switch(msg.type)
         {

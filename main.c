@@ -7,9 +7,24 @@
 
 router r;
 
+void append_logs()
+{
+    if (r.id == -1 || r.log.size == 0)
+        return;
+
+    char filename[50] = "router%d.log";
+    sprintf(filename, filename, r.id);
+    FILE *f = open_file("logs/", filename, "a");
+
+    if (f == NULL)
+        write_to_log("Log file not found, creating new one\n");
+    else
+        fwrite(r.log.log, r.log.size, 1, f);
+}
+
 int main(int argc, char const *argv[])
 {
-
+    atexit(append_logs);
     if (argc != 2)
     {
         puts("Usage: ./router <id>");

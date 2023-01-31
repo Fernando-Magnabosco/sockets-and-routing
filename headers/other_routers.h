@@ -8,15 +8,12 @@ typedef struct other_router
 {
     int id;
     int cost;
-    union
+    struct
     {
-        struct
-        {
-            int port;
-            char ip[16];
-        } network_info;
-        int source;
-    } connection;
+        int port;
+        char ip[16];
+    } network_info;
+    int source;
     bool is_neighbor;
 } other_router;
 

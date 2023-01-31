@@ -1,5 +1,34 @@
 #include "../headers/router.h"
 #include <arpa/inet.h>
+#include <unistd.h>
+
+#define DISTANCE_VECTOR_DELAY 1000000
+
+void *send_distance_vectors(void *args)
+{
+    while (1)
+    {
+        usleep(DISTANCE_VECTOR_DELAY);
+        message msg = {
+            .type = CONTROL,
+            .source = r.id,
+            .destiny_id = -1,
+            .sequence = 0,
+        };
+
+        for (int_list *iterator = r.neighbor_list; iterator; iterator = iterator->next)
+        {
+            msg.destiny_id = iterator->value;
+            sprintf(msg.data, "%d\n", DISTANCE_VECTOR);
+            for (int i = 0; i < NETWORK_SIZE; i++)
+                if (r.other_routers[i].id != -1)
+                    sprintf(msg.data + strlen(msg.data), "%d %d\n",
+                            r.other_routers[i].id, r.other_routers[i].cost);
+
+            enqueue(r.out, msg);
+        }
+    }
+}
 
 void *sender(void *args)
 {
@@ -19,20 +48,23 @@ void *sender(void *args)
     {
 
         message msg = dequeue(r.out);
+        if (msg.destiny_id >= NETWORK_SIZE || msg.destiny_id < 0)
+            continue;
+
         msg.sequence++;
 
         int port;
         char *ip;
 
-        if (r.other_routers[msg.destiny_id].is_neighbor)
+        if (r.other_routers[msg.destiny_id].is_neighbor && r.other_routers[msg.destiny_id].source == -1)
         {
-            port = r.other_routers[msg.destiny_id].connection.network_info.port;
-            ip = r.other_routers[msg.destiny_id].connection.network_info.ip;
+            port = r.other_routers[msg.destiny_id].network_info.port;
+            ip = r.other_routers[msg.destiny_id].network_info.ip;
         }
         else
         {
-            port = r.other_routers[r.other_routers[msg.destiny_id].connection.source].connection.network_info.port;
-            ip = r.other_routers[r.other_routers[msg.destiny_id].connection.source].connection.network_info.ip;
+            port = r.other_routers[r.other_routers[msg.destiny_id].source].network_info.port;
+            ip = r.other_routers[r.other_routers[msg.destiny_id].source].network_info.ip;
         }
 
         si_other.sin_port = htons(port);
