@@ -1,10 +1,9 @@
 #include "headers/router.h"
-
+#include <sys/types.h>
+#include <sys/stat.h>
 #define NO_THREADS 5
 
 router r;
-
-
 
 int main(int argc, char const *argv[])
 {
@@ -14,6 +13,11 @@ int main(int argc, char const *argv[])
         puts("Usage: ./router <id>");
         return 1;
     }
+
+    // if folder logs doesn't exist, create it
+    struct stat st = {0};
+    if (stat("logs", &st) == -1)
+        mkdir("logs", 0700);
 
     init_router(atoi(argv[1]));
 

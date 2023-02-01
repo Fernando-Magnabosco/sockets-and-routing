@@ -39,6 +39,7 @@ FILE *open_file(char *folder, char *filename, char *mode)
 void write_to_log(char *s)
 {
     pthread_mutex_lock(&r.log.lock);
+
     if (r.log.size + strlen(s) + 1 > LOG_SIZE)
     {
         append_logs();
@@ -48,7 +49,7 @@ void write_to_log(char *s)
 
     strcat(r.log.log, s);
     strcat(r.log.log, "\n");
-    r.log.size += strlen(s);
+    r.log.size += strlen(s) + strlen("\n");
     pthread_mutex_unlock(&r.log.lock);
 }
 
@@ -57,14 +58,13 @@ void append_logs()
     if (r.id == -1 || r.log.size == 0)
         return;
 
-    char filename[50] = "router%d.log";
-    sprintf(filename, filename, r.id);
+    char filename[50];
+    sprintf(filename, "router%d.log", r.id);
     FILE *f = open_file("logs/", filename, "a");
 
-    if (f == NULL)
-        write_to_log("Log file not found, creating new one\n");
-    else
+    if (f != NULL)
         fwrite(r.log.log, r.log.size, 1, f);
+    fclose(f);
 }
 
 void load_logs()
