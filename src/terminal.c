@@ -54,15 +54,18 @@ void send_message()
     clean_stdin();
 
     puts("message sent :)");
+    write_to_log("message sent :) \n");
     enqueue(r.out, msg);
 }
 
 void show_logs()
 {
+    pthread_mutex_lock(&r.log.lock);
     if (r.log.size == 0)
         puts("No logs to show :(");
     for (int i = 0; i < r.log.size; i++)
         printf("%c", r.log.log[i]);
+    pthread_mutex_unlock(&r.log.lock);
 }
 
 void exit_router()

@@ -38,6 +38,7 @@ FILE *open_file(char *folder, char *filename, char *mode)
 
 void write_to_log(char *s)
 {
+    pthread_mutex_lock(&r.log.lock);
     if (r.log.size + strlen(s) + 1 > LOG_SIZE)
     {
         append_logs();
@@ -48,6 +49,7 @@ void write_to_log(char *s)
     strcat(r.log.log, s);
     strcat(r.log.log, "\n");
     r.log.size += strlen(s);
+    pthread_mutex_unlock(&r.log.lock);
 }
 
 void append_logs()
@@ -68,7 +70,7 @@ void append_logs()
 void load_logs()
 {
 
-    pthread_mutex_lock(&r.log_lock);
+    pthread_mutex_lock(&r.log.lock);
     char filename[50] = "router%d.log";
     sprintf(filename, filename, r.id);
     FILE *f = open_file("logs/", filename, "w+");
@@ -82,7 +84,7 @@ void load_logs()
         fread(r.log.log, LOG_SIZE, 1, f);
         r.log.size = strlen(r.log.log);
     }
-    pthread_mutex_unlock(&r.log_lock);
+    pthread_mutex_unlock(&r.log.lock);
 }
 
 void init_router(int id)
@@ -155,7 +157,8 @@ void init_router(int id)
     if (r.id == -1)
         die("Router not found");
 
-    pthread_mutex_init(&r.log_lock, NULL);
+    pthread_mutex_init(&r.neighbor_list_lock, NULL);
+    pthread_mutex_init(&r.log.lock, NULL);
     load_logs();
 
     return;

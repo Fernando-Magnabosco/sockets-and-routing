@@ -10,21 +10,24 @@ void *send_distance_vectors(void *args)
         .destiny_id = -1,
         .sequence = 0,
     };
-    
+
+    char buffer[MSG_SIZE];
+
     while (1)
     {
         usleep(DISTANCE_VECTOR_DELAY);
 
-        strcpy(msg.data, "");
+        msg.data[0] = '\0';
         sprintf(msg.data, "%d\n", DISTANCE_VECTOR);
         for (int i = 0; i < NETWORK_SIZE; i++)
         {
-            if (strlen(msg.data) + strlen("%d %d\n") > MSG_SIZE)
+
+            sprintf(buffer, "%d %d\n\0", r.other_routers[i].id, r.other_routers[i].cost);
+            if (strlen(msg.data) + strlen(buffer) > MSG_SIZE)
                 break;
 
             if (r.other_routers[i].id != -1)
-                sprintf(msg.data + strlen(msg.data), "%d %d\n",
-                        r.other_routers[i].id, r.other_routers[i].cost);
+                strcat(msg.data, buffer);
         }
 
         for (int_list *iterator = r.neighbor_list; iterator; iterator = iterator->next)
@@ -61,16 +64,12 @@ void *sender(void *args)
         int port;
         char *ip;
 
-        if (r.other_routers[msg.destiny_id].is_neighbor && r.other_routers[msg.destiny_id].source == -1)
-        {
-            port = r.other_routers[msg.destiny_id].network_info.port;
-            ip = r.other_routers[msg.destiny_id].network_info.ip;
-        }
-        else
-        {
-            port = r.other_routers[r.other_routers[msg.destiny_id].source].network_info.port;
-            ip = r.other_routers[r.other_routers[msg.destiny_id].source].network_info.ip;
-        }
+        int dest = msg.destiny_id;
+        while (r.other_routers[dest].source != -1)
+            dest = r.other_routers[dest].source;
+
+        port = r.other_routers[dest].network_info.port;
+        ip = r.other_routers[dest].network_info.ip;
 
         si_other.sin_port = htons(port);
 

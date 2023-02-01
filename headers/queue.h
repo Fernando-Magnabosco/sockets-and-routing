@@ -6,6 +6,7 @@
 #include <string.h>
 #include "message.h"
 #include <semaphore.h>
+#include <pthread.h>
 
 #define BUFFER_SIZE 12
 
@@ -15,6 +16,7 @@ typedef struct queue
     message *tail;
     message buffer[BUFFER_SIZE];
     sem_t *sem;
+    pthread_mutex_t mutex;
 
 } queue;
 

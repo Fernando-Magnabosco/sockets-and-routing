@@ -2,4 +2,4 @@ make:
 	clear
 	gcc main.c \
 	src/*.c \
-	-o router -lpthread
+	-g -o router -lpthread

@@ -21,9 +21,9 @@ typedef struct router
     queue *in;
     queue *out;
 
-    pthread_mutex_t log_lock;
     logs log;
 
+    pthread_mutex_t neighbor_list_lock;
     int_list *neighbor_list;
     other_router other_routers[NETWORK_SIZE];
 
