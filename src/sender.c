@@ -58,6 +58,8 @@ void *sender(void *args)
         message msg = dequeue(r.out);
         if (msg.destiny_id >= NETWORK_SIZE || msg.destiny_id < 0)
             continue;
+        if (r.other_routers[msg.destiny_id].id == -1)
+            continue;
 
         msg.sequence++;
 
