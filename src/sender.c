@@ -22,7 +22,7 @@ void *send_distance_vectors(void *args)
         for (int i = 0; i < NETWORK_SIZE; i++)
         {
 
-            sprintf(buffer, "%d %d\n\0", r.other_routers[i].id, r.other_routers[i].cost);
+            sprintf(buffer, "%d %d\n", r.other_routers[i].id, r.other_routers[i].cost);
             if (strlen(msg.data) + strlen(buffer) > MSG_SIZE)
                 break;
 

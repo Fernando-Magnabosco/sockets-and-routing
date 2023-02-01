@@ -40,7 +40,7 @@ void update_distance_vector(message msg)
         else
         {
             if (r.other_routers[id].source == msg.source)
-                r.other_routers[id].cost = cost;
+                r.other_routers[id].cost = cost + r.other_routers[msg.source].cost;
             else if (r.other_routers[id].cost > cost + r.other_routers[msg.source].cost)
             {
                 r.other_routers[id].cost = cost + r.other_routers[msg.source].cost;
@@ -88,12 +88,12 @@ void *packet_handler(void *args)
     {
 
         message msg = dequeue(r.in);
-        sprintf(log, "Packet from %d to %d\0", msg.source, msg.destiny_id);
+        sprintf(log, "Packet from %d to %d", msg.source, msg.destiny_id);
         write_to_log(log);
 
         if (msg.destiny_id != r.id)
         {
-            sprintf(log, "Forwarding packet with destiny %d\0", msg.destiny_id);
+            sprintf(log, "Forwarding packet with destiny %d", msg.destiny_id);
             enqueue(r.out, msg);
             continue;
         }

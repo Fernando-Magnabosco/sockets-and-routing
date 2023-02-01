@@ -41,14 +41,14 @@ void send_message()
     fgets(input, 2, stdin);
     clean_stdin();
 
-    puts("Enter message:");
-
     message msg = {
         .type = DATA,
         .destiny_id = *input - '0',
         .source = r.port,
         .sequence = 0,
     };
+
+    puts("Enter message:");
 
     fgets(msg.data, MSG_SIZE, stdin);
     clean_stdin();
