@@ -14,10 +14,14 @@ int main(int argc, char const *argv[])
         return 1;
     }
 
-    // if folder logs doesn't exist, create it
     struct stat st = {0};
     if (stat("logs", &st) == -1)
         mkdir("logs", 0700);
+
+    char filename[20];
+    sprintf(filename, "logs/router%s.log", argv[1]);
+    FILE *f = fopen(filename, "a");
+    fclose(f);
 
     init_router(atoi(argv[1]));
 
