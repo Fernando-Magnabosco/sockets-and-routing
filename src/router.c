@@ -73,17 +73,15 @@ void load_logs()
     pthread_mutex_lock(&r.log.lock);
     char filename[50] = "router%d.log";
     sprintf(filename, filename, r.id);
-    FILE *f = open_file("logs/", filename, "w+");
+    FILE *f = open_file("logs/", filename, "r");
 
-    if (f == NULL)
-        write_to_log("Log file not found, creating new one\n");
-    else
-
+    if (f != NULL)
     {
         fseek(f, -LOG_SIZE, SEEK_END);
         fread(r.log.log, LOG_SIZE, 1, f);
         r.log.size = strlen(r.log.log);
     }
+    fclose(f);
     pthread_mutex_unlock(&r.log.lock);
 }
 
