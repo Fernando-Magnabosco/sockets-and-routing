@@ -1,6 +1,10 @@
 #ifndef ROUTER_H
 #define ROUTER_H
 
+#define DISTANCE_VECTOR_DELAY 1000000                // distance vector delay in microseconds
+#define TIME_OUT DISTANCE_VECTOR_DELAY * 5 / 1000000 // timeout in seconds
+#define CHECK_NEIGHBORS_DELAY 10000000               // check neighbors delay in microseconds
+
 #include "queue.h"
 #include "int_list.h"
 #include "logs.h"
@@ -21,6 +25,8 @@ typedef struct router
     queue *in;
     queue *out;
 
+    queue *messages;
+
     logs log;
 
     pthread_mutex_t neighbor_list_lock;
@@ -35,7 +41,11 @@ void *packet_handler(void *args);
 void *terminal(void *args);
 void *sender(void *args);
 void *receiver(void *args);
-void *send_distance_vectors(void *args);
+void *routine_distance_vector_sender(void *args);
+void send_distance_vectors();
+void *check_neighbors(void *args);
+
+void disconnect(int id);
 void init_router(int id);
 
 FILE *open_file(char *folder, char *filename, char *mode);

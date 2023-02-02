@@ -1,7 +1,7 @@
 #ifndef OTHER_ROUTERS_H
 #define OTHER_ROUTERS_H
 #include <stdbool.h>
-
+#include <time.h>
 #define NETWORK_SIZE 16
 
 typedef struct other_router
@@ -14,6 +14,8 @@ typedef struct other_router
         char ip[16];
     } network_info;
     int source;
+    time_t last_update;
+
     bool is_neighbor;
 } other_router;
 

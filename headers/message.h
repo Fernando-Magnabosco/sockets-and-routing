@@ -19,7 +19,8 @@ enum control_type
 typedef struct message
 {
     enum msg_type type;
-    int source;
+    int origin; // whoever wrote the message
+    int sender; // whoever sent the message
     int sequence;
     int destiny_id;
 

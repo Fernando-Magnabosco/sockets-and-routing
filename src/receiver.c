@@ -26,8 +26,11 @@ void *receiver(void *args)
         if ((recv_len = recvfrom(s, &msg, sizeof(message), 0, (struct sockaddr *)&si_other, &slen)) == -1)
             die("recvfrom()");
 
+        r.other_routers[msg.origin].last_update = time(NULL);
+        r.other_routers[msg.sender].last_update = time(NULL);
+
         char log[100];
-        sprintf(log, "Received packet from %d", msg.source);
+        sprintf(log, "Received packet from %d", msg.origin);
         write_to_log(log);
         enqueue(r.in, msg);
     }

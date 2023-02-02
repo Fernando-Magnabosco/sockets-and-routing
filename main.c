@@ -1,7 +1,7 @@
 #include "headers/router.h"
 #include <sys/types.h>
 #include <sys/stat.h>
-#define NO_THREADS 5
+#define NO_THREADS 6
 
 router r;
 
@@ -32,7 +32,8 @@ int main(int argc, char const *argv[])
         sender,
         receiver,
         packet_handler,
-        send_distance_vectors};
+        routine_distance_vector_sender,
+        check_neighbors};
 
     void *args[NO_THREADS];
 

@@ -30,5 +30,6 @@ typedef enum queue_status
 queue *init_queue();
 queue_status enqueue(queue *q, message msg);
 message dequeue(queue *q);
+void print_queue(queue *q);
 
 #endif
