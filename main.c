@@ -32,7 +32,7 @@ int main(int argc, char const *argv[])
         sender,
         receiver,
         packet_handler,
-        send_distance_vectors,
+        routine_distance_vector_sender,
         check_neighbors};
 
     void *args[NO_THREADS];

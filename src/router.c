@@ -93,10 +93,10 @@ void load_logs()
 
 void disconnect(int id)
 {
-    r.other_routers[id] = (other_router){
-        .id = -1,
-        .source = -1,
-        .is_neighbor = false};
+
+    r.other_routers[id].id = -1;
+    r.other_routers[id].source = -1;
+    r.other_routers[id].is_neighbor = false;
 
     r.neighbor_list = remove_int(r.neighbor_list, id);
 

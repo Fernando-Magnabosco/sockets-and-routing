@@ -41,7 +41,8 @@ void *packet_handler(void *args);
 void *terminal(void *args);
 void *sender(void *args);
 void *receiver(void *args);
-void *send_distance_vectors(void *args);
+void *routine_distance_vector_sender(void *args);
+void send_distance_vectors();
 void *check_neighbors(void *args);
 
 void disconnect(int id);

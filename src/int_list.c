@@ -59,6 +59,7 @@ int_list *remove_int(int_list *list, int value)
             int_list *next = current->next->next;
             free(current->next);
             current->next = next;
+            pthread_mutex_unlock(&r.neighbor_list_lock);
             return list;
         }
         current = current->next;

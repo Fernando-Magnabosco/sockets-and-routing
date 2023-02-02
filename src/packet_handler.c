@@ -5,16 +5,17 @@ void update_distance_vector(message msg)
 
     if (r.other_routers[msg.origin].id == -1)
     {
-        r.other_routers[msg.origin] = (other_router){
-            .id = msg.origin,
-            .is_neighbor = true,
-            .last_update = time(NULL)};
+
+        r.other_routers[msg.origin].id = msg.origin;
+        r.other_routers[msg.origin].is_neighbor = true;
+        r.other_routers[msg.origin].last_update = time(NULL);
+
         r.neighbor_list = add_int(r.neighbor_list, msg.origin);
     }
 
     int id, cost;
     char *token = strtok(msg.data + 2, "\n");
-
+    bool changed = false;
     while (token != NULL)
     {
         sscanf(token, "%d %d", &id, &cost);
@@ -23,12 +24,16 @@ void update_distance_vector(message msg)
             token = strtok(NULL, "\n");
             continue;
         }
+        else
+            changed = true;
         if (r.other_routers[id].id == -1)
+        {
             r.other_routers[id] = (other_router){
                 .id = id,
                 .cost = cost + r.other_routers[msg.origin].cost,
                 .source = msg.origin,
                 .is_neighbor = false};
+        }
         else
         {
             if (r.other_routers[id].source == msg.origin)
@@ -41,6 +46,8 @@ void update_distance_vector(message msg)
         }
         token = strtok(NULL, "\n");
     }
+    if (changed)
+        send_distance_vectors();
 }
 
 void handle_control_message(message msg)

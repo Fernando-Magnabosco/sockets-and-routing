@@ -1,7 +1,6 @@
 #include "../headers/router.h"
 
-
-void *send_distance_vectors(void *args)
+void send_distance_vectors()
 {
     message msg = {
         .type = CONTROL,
@@ -9,31 +8,34 @@ void *send_distance_vectors(void *args)
         .destiny_id = -1,
         .sequence = 0,
     };
-
     char buffer[MSG_SIZE];
+    msg.data[0] = '\0';
+    sprintf(msg.data, "%d\n", DISTANCE_VECTOR);
+    for (int i = 0; i < NETWORK_SIZE; i++)
+    {
+
+        sprintf(buffer, "%d %d\n", r.other_routers[i].id, r.other_routers[i].cost);
+        if (strlen(msg.data) + strlen(buffer) > MSG_SIZE)
+            break;
+
+        if (r.other_routers[i].id != -1)
+            strcat(msg.data, buffer);
+    }
+
+    for (int_list *iterator = r.neighbor_list; iterator; iterator = iterator->next)
+    {
+        msg.destiny_id = iterator->value;
+        enqueue(r.out, msg);
+    }
+}
+
+void *routine_distance_vector_sender(void *args)
+{
 
     while (1)
     {
         usleep(DISTANCE_VECTOR_DELAY);
-
-        msg.data[0] = '\0';
-        sprintf(msg.data, "%d\n", DISTANCE_VECTOR);
-        for (int i = 0; i < NETWORK_SIZE; i++)
-        {
-
-            sprintf(buffer, "%d %d\n", r.other_routers[i].id, r.other_routers[i].cost);
-            if (strlen(msg.data) + strlen(buffer) > MSG_SIZE)
-                break;
-
-            if (r.other_routers[i].id != -1)
-                strcat(msg.data, buffer);
-        }
-
-        for (int_list *iterator = r.neighbor_list; iterator; iterator = iterator->next)
-        {
-            msg.destiny_id = iterator->value;
-            enqueue(r.out, msg);
-        }
+        send_distance_vectors();
     }
 }
 
