@@ -1,12 +1,11 @@
 #include "../headers/router.h"
 
-#define DISTANCE_VECTOR_DELAY 1000000
 
 void *send_distance_vectors(void *args)
 {
     message msg = {
         .type = CONTROL,
-        .source = r.id,
+        .origin = r.id,
         .destiny_id = -1,
         .sequence = 0,
     };
@@ -60,8 +59,11 @@ void *sender(void *args)
             continue;
         if (r.other_routers[msg.destiny_id].id == -1)
             continue;
+        if (msg.sequence == NETWORK_SIZE)
+            continue;
 
         msg.sequence++;
+        msg.sender = r.id;
 
         int port;
         char *ip;
@@ -85,6 +87,9 @@ void *sender(void *args)
         {
             die("sendto()");
         }
-        // printf("Sent packet to %s:%d\n", msg.destiny_ip, msg.destiny_port);
+
+        char buffer[MSG_SIZE];
+        sprintf(buffer, "Sent packet to %s:%d\n", ip, port);
+        write_to_log(buffer);
     }
 }

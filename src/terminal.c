@@ -1,6 +1,6 @@
 #include "../headers/router.h"
 
-#define NO_OPTIONS 5
+#define NO_OPTIONS 6
 
 void list_neighbors()
 {
@@ -32,6 +32,11 @@ void list_routing_table()
     }
 }
 
+void list_messages()
+{
+    print_queue(r.messages);
+}
+
 void send_message()
 {
     puts("To whom?");
@@ -44,7 +49,7 @@ void send_message()
     message msg = {
         .type = DATA,
         .destiny_id = *input - '0',
-        .source = r.port,
+        .origin = r.id,
         .sequence = 0,
     };
 
@@ -78,11 +83,12 @@ void menu()
     printf("\n");
     char *options[NO_OPTIONS] = {"List neighbors",
                                  "List routing table",
+                                 "Show messages",
                                  "Send message",
                                  "Show logs",
                                  "Exit"};
 
-    void (*functions[NO_OPTIONS])(void) = {list_neighbors, list_routing_table, send_message, show_logs, exit_router};
+    void (*functions[NO_OPTIONS])(void) = {list_neighbors, list_routing_table, list_messages, send_message, show_logs, exit_router};
 
     for (int i = 0; i < NO_OPTIONS; i++)
         printf("%d - %s\n", i, options[i]);

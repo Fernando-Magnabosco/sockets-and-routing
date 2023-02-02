@@ -54,3 +54,15 @@ message dequeue(queue *q)
     pthread_mutex_unlock(&q->mutex);
     return msg;
 }
+
+void print_queue(queue *q)
+{
+    pthread_mutex_lock(&q->mutex);
+    for (message *i = q->head; i != q->tail; i++)
+    {
+        if (i == q->buffer + BUFFER_SIZE)
+            i = q->buffer;
+        printf("Message from %d: %s", i->origin, i->data);
+    }
+    pthread_mutex_unlock(&q->mutex);
+}

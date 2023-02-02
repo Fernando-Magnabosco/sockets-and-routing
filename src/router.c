@@ -40,16 +40,22 @@ void write_to_log(char *s)
 {
     pthread_mutex_lock(&r.log.lock);
 
-    if (r.log.size + strlen(s) + 1 > LOG_SIZE)
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+    char time[50];
+    sprintf(time, "%04d/%02d/%02d %02d:%02d:%02d ", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+
+    if (r.log.size + strlen(s) + strlen(time) + 1 > LOG_SIZE)
     {
         append_logs();
         strcpy(r.log.log, "");
         r.log.size = 0;
     }
 
+    strcat(r.log.log, time);
     strcat(r.log.log, s);
     strcat(r.log.log, "\n");
-    r.log.size += strlen(s) + strlen("\n");
+    r.log.size += strlen(s) + strlen(time) + strlen("\n");
     pthread_mutex_unlock(&r.log.lock);
 }
 
@@ -83,6 +89,25 @@ void load_logs()
     }
     fclose(f);
     pthread_mutex_unlock(&r.log.lock);
+}
+
+void disconnect(int id)
+{
+    r.other_routers[id] = (other_router){
+        .id = -1,
+        .source = -1,
+        .is_neighbor = false};
+
+    r.neighbor_list = remove_int(r.neighbor_list, id);
+
+    for (int i = 0; i < NETWORK_SIZE; i++)
+    {
+        if (r.other_routers[i].source == id)
+        {
+            r.other_routers[i].id = -1;
+            r.other_routers[i].cost = -1;
+        }
+    }
 }
 
 void init_router(int id)
