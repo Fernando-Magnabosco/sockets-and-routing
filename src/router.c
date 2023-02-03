@@ -105,7 +105,6 @@ void disconnect(int id)
             r.other_routers[i].cost = -1;
             int lower_cost = -1;
             int lower_cost_id = -1;
-            pthread_mutex_lock(&r.neighbor_list_lock);
             for (int_list *iterator = r.neighbor_list; iterator != NULL; iterator = iterator->next)
             {
                 if (iterator->value == id)
