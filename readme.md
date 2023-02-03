@@ -8,10 +8,11 @@ Para executar:
 
 Onde `<id>` é o identificador do roteador, definido dentro de roteador.config;
 
-Atualmente um roteador pode mandar e receber mensagens para o roteador a sua esquerda ou a sua direita. Por enquanto ele considera o valor da porta e não o ID, então prossiga com cuidado;
+Este sistema é responsável por fazer todo o esquema de roteamento, evitando contagens ao infinito. É possível enviar mensagens para todos os destinos alcançáveis e o histórico de mensagens é mantido para referência futura. Além disso, um log do sistema está disponível para acompanhar o funcionamento.
 
-Para enviar uma mensagem, digite l ou r para escolher o roteador a quem enviar, digite a mensagem e aperte enter. A mensagem será enviada para o roteador escolhido, que a imprimirá na tela.
+Quando um vizinho desliga, o sistema é capaz de se adaptar automaticamente, garantindo que o roteamento continue sem interrupções.
 
-Ainda não estão implementados menus mais complexos ou um packet handler, então o programa não faz nada além de enviar e receber mensagens.
+Obrigado por usar o nosso sistema de roteamento!
+
 
 Eduardo Rostirola Barcaroli e Fernando Schreiner Magnabosco
