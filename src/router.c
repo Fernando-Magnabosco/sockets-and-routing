@@ -93,7 +93,10 @@ void load_logs()
 
 void disconnect(int id)
 {
+
     pthread_mutex_lock(&r.other_routers_lock);
+    pthread_mutex_lock(&r.neighbor_list_lock);
+
     for (int i = 0; i < NETWORK_SIZE; i++)
     {
         if (r.other_routers[i].source == id)
@@ -107,7 +110,6 @@ void disconnect(int id)
             {
                 if (iterator->value == id)
                 {
-                    pthread_mutex_unlock(&r.neighbor_list_lock);
                     continue;
                 }
                 if (lower_cost == -1 || r.other_routers[iterator->value].cost < lower_cost)
@@ -116,7 +118,7 @@ void disconnect(int id)
                     lower_cost_id = iterator->value;
                 }
             }
-            pthread_mutex_unlock(&r.neighbor_list_lock);
+
             r.other_routers[i].cost = lower_cost;
             r.other_routers[i].source = lower_cost_id;
         }
@@ -124,6 +126,7 @@ void disconnect(int id)
     memset(r.other_routers[id].distance_vector, -1, sizeof(int) * NETWORK_SIZE);
     r.other_routers[id].id = -1;
     r.other_routers[id].source = -1;
+    pthread_mutex_unlock(&r.neighbor_list_lock);
     pthread_mutex_unlock(&r.other_routers_lock);
 }
 
