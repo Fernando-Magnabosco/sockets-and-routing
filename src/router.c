@@ -93,27 +93,45 @@ void load_logs()
 
 void disconnect(int id)
 {
-
-    r.other_routers[id].id = -1;
-    r.other_routers[id].source = -1;
-    r.other_routers[id].is_neighbor = false;
-
-    r.neighbor_list = remove_int(r.neighbor_list, id);
-
+    pthread_mutex_lock(&r.other_routers_lock);
     for (int i = 0; i < NETWORK_SIZE; i++)
     {
         if (r.other_routers[i].source == id)
         {
             r.other_routers[i].id = -1;
             r.other_routers[i].cost = -1;
+            int lower_cost = -1;
+            int lower_cost_id = -1;
+            pthread_mutex_lock(&r.neighbor_list_lock);
+            for (int_list *iterator = r.neighbor_list; iterator != NULL; iterator = iterator->next)
+            {
+                if (iterator->value == id)
+                {
+                    pthread_mutex_unlock(&r.neighbor_list_lock);
+                    continue;
+                }
+                if (lower_cost == -1 || r.other_routers[iterator->value].cost < lower_cost)
+                {
+                    lower_cost = r.other_routers[iterator->value].cost;
+                    lower_cost_id = iterator->value;
+                }
+            }
+            pthread_mutex_unlock(&r.neighbor_list_lock);
+            r.other_routers[i].cost = lower_cost;
+            r.other_routers[i].source = lower_cost_id;
         }
     }
+    memset(r.other_routers[id].distance_vector, -1, sizeof(int) * NETWORK_SIZE);
+    r.other_routers[id].id = -1;
+    r.other_routers[id].source = -1;
+    pthread_mutex_unlock(&r.other_routers_lock);
 }
 
 void init_router(int id)
 {
     r.in = init_queue();
     r.out = init_queue();
+    r.messages = init_queue();
 
     r.id = -1;
     r.neighbor_list = init_int_list();
@@ -125,6 +143,7 @@ void init_router(int id)
             .cost = -1,
             .source = -1,
             .is_neighbor = false,
+            .distance_vector = NULL,
         };
     }
 
@@ -156,6 +175,8 @@ void init_router(int id)
         r.other_routers[addTo].id = addTo;
         r.other_routers[addTo].cost = enlace.cost;
         r.other_routers[addTo].is_neighbor = true;
+        r.other_routers[addTo].distance_vector = malloc(sizeof(int) * NETWORK_SIZE);
+        memset(r.other_routers[addTo].distance_vector, -1, sizeof(int) * NETWORK_SIZE);
     }
 
     fclose(f);
@@ -181,8 +202,10 @@ void init_router(int id)
         die("Router not found");
 
     pthread_mutex_init(&r.neighbor_list_lock, NULL);
+    pthread_mutex_init(&r.other_routers_lock, NULL);
     pthread_mutex_init(&r.log.lock, NULL);
     load_logs();
 
+    printf("Hey, I'm router %d :)\n", r.id);
     return;
 }

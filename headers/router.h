@@ -5,6 +5,9 @@
 #define TIME_OUT DISTANCE_VECTOR_DELAY * 5 / 1000000 // timeout in seconds
 #define CHECK_NEIGHBORS_DELAY 10000000               // check neighbors delay in microseconds
 
+#define NETWORK_SIZE 16
+#define NETWORK_DIAMETER NETWORK_SIZE * 10
+
 #include "queue.h"
 #include "int_list.h"
 #include "logs.h"
@@ -30,6 +33,8 @@ typedef struct router
     logs log;
 
     pthread_mutex_t neighbor_list_lock;
+    pthread_mutex_t other_routers_lock;
+
     int_list *neighbor_list;
     other_router other_routers[NETWORK_SIZE];
 

@@ -1,9 +1,11 @@
 #include "../headers/router.h"
 
-#define NO_OPTIONS 6
+#define NO_OPTIONS 7
 
 void list_neighbors()
 {
+    pthread_mutex_lock(&r.other_routers_lock);
+    pthread_mutex_lock(&r.neighbor_list_lock);
     for (int_list *iterator = r.neighbor_list; iterator; iterator = iterator->next)
     {
         printf("%d %s:%d\n",
@@ -11,10 +13,13 @@ void list_neighbors()
                r.other_routers[iterator->value].network_info.ip,
                r.other_routers[iterator->value].network_info.port);
     }
+    pthread_mutex_unlock(&r.neighbor_list_lock);
+    pthread_mutex_unlock(&r.other_routers_lock);
 }
 
-void list_routing_table()
+void list_reachable()
 {
+    pthread_mutex_lock(&r.other_routers_lock);
     for (int i = 0; i < NETWORK_SIZE; i++)
     {
         if (r.other_routers[i].id != -1)
@@ -30,6 +35,26 @@ void list_routing_table()
                     r.other_routers[i].cost,
                     r.other_routers[i].source);
     }
+    pthread_mutex_unlock(&r.other_routers_lock);
+}
+
+void list_routing_table()
+{
+    pthread_mutex_lock(&r.other_routers_lock);
+    pthread_mutex_lock(&r.neighbor_list_lock);
+    printf("%d %d", -1, r.id);
+    for (int i = 0; i < 16; i++)
+        printf("\t%d", i);
+    putchar('\n');
+    for (int_list *iterator = r.neighbor_list; iterator != NULL; iterator = iterator->next)
+    {
+        printf("%d %d", iterator->value, r.other_routers[iterator->value].cost);
+        for (int i = 0; i < 16; i++)
+            printf("\t%d", r.other_routers[iterator->value].distance_vector[i]);
+        putchar('\n');
+    }
+    pthread_mutex_unlock(&r.neighbor_list_lock);
+    pthread_mutex_unlock(&r.other_routers_lock);
 }
 
 void list_messages()
@@ -40,7 +65,7 @@ void list_messages()
 void send_message()
 {
     puts("To whom?");
-    list_routing_table();
+    list_reachable();
 
     char input[2];
     fgets(input, 2, stdin);
@@ -82,13 +107,14 @@ void menu()
 {
     printf("\n");
     char *options[NO_OPTIONS] = {"List neighbors",
+                                 "List reachable",
                                  "List routing table",
                                  "Show messages",
                                  "Send message",
                                  "Show logs",
                                  "Exit"};
 
-    void (*functions[NO_OPTIONS])(void) = {list_neighbors, list_routing_table, list_messages, send_message, show_logs, exit_router};
+    void (*functions[NO_OPTIONS])(void) = {list_neighbors, list_reachable, list_routing_table, list_messages, send_message, show_logs, exit_router};
 
     for (int i = 0; i < NO_OPTIONS; i++)
         printf("%d - %s\n", i, options[i]);

@@ -2,15 +2,13 @@
 
 void update_distance_vector(message msg)
 {
-
-    if (r.other_routers[msg.origin].id == -1)
+    pthread_mutex_lock(&r.other_routers_lock);
+    if (r.other_routers[msg.sender].id == -1)
     {
+        r.other_routers[msg.sender].id = msg.sender;
 
-        r.other_routers[msg.origin].id = msg.origin;
-        r.other_routers[msg.origin].is_neighbor = true;
-        r.other_routers[msg.origin].last_update = time(NULL);
-
-        r.neighbor_list = add_int(r.neighbor_list, msg.origin);
+        r.other_routers[msg.sender].last_update = time(NULL);
+        r.neighbor_list = add_int(r.neighbor_list, msg.sender);
     }
 
     int id, cost;
@@ -19,33 +17,51 @@ void update_distance_vector(message msg)
     while (token != NULL)
     {
         sscanf(token, "%d %d", &id, &cost);
+
         if (id == r.id)
         {
             token = strtok(NULL, "\n");
             continue;
         }
-        else
-            changed = true;
+
+        if(r.other_routers[msg.sender].is_neighbor)
+            r.other_routers[msg.sender].distance_vector[id] = cost;
+
         if (r.other_routers[id].id == -1)
         {
-            r.other_routers[id] = (other_router){
-                .id = id,
-                .cost = cost + r.other_routers[msg.origin].cost,
-                .source = msg.origin,
-                .is_neighbor = false};
+            r.other_routers[id].id = id;
+            r.other_routers[id].cost = cost + r.other_routers[msg.sender].cost;
+            r.other_routers[id].source = msg.sender;
+
+            changed = true;
         }
         else
         {
-            if (r.other_routers[id].source == msg.origin)
-                r.other_routers[id].cost = cost + r.other_routers[msg.origin].cost;
-            else if (r.other_routers[id].cost > cost + r.other_routers[msg.origin].cost)
+            if (r.other_routers[id].source == msg.sender &&
+                r.other_routers[id].cost != cost + r.other_routers[msg.sender].cost)
             {
-                r.other_routers[id].cost = cost + r.other_routers[msg.origin].cost;
-                r.other_routers[id].source = msg.origin;
+                if (cost + r.other_routers[msg.sender].cost > NETWORK_DIAMETER)
+                {
+                    // solve count-to-infinity problem
+                    r.other_routers[id].cost = NETWORK_DIAMETER;
+                    token = strtok(NULL, "\n");
+                    continue;
+                }
+
+                r.other_routers[id].cost = cost + r.other_routers[msg.sender].cost;
+                changed = true;
+            }
+            else if (r.other_routers[id].cost > cost + r.other_routers[msg.sender].cost)
+            {
+                r.other_routers[id].cost = cost + r.other_routers[msg.sender].cost;
+                r.other_routers[id].source = msg.sender;
+                changed = true;
             }
         }
         token = strtok(NULL, "\n");
     }
+    pthread_mutex_unlock(&r.other_routers_lock);
+
     if (changed)
         send_distance_vectors();
 }

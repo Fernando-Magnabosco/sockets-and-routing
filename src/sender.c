@@ -11,6 +11,7 @@ void send_distance_vectors()
     char buffer[MSG_SIZE];
     msg.data[0] = '\0';
     sprintf(msg.data, "%d\n", DISTANCE_VECTOR);
+    pthread_mutex_lock(&r.other_routers_lock);
     for (int i = 0; i < NETWORK_SIZE; i++)
     {
 
@@ -21,12 +22,14 @@ void send_distance_vectors()
         if (r.other_routers[i].id != -1)
             strcat(msg.data, buffer);
     }
-
+    pthread_mutex_unlock(&r.other_routers_lock);
+    pthread_mutex_lock(&r.neighbor_list_lock);
     for (int_list *iterator = r.neighbor_list; iterator; iterator = iterator->next)
     {
         msg.destiny_id = iterator->value;
         enqueue(r.out, msg);
     }
+    pthread_mutex_unlock(&r.neighbor_list_lock);
 }
 
 void *routine_distance_vector_sender(void *args)
@@ -59,8 +62,11 @@ void *sender(void *args)
         message msg = dequeue(r.out);
         if (msg.destiny_id >= NETWORK_SIZE || msg.destiny_id < 0)
             continue;
+
+        pthread_mutex_lock(&r.other_routers_lock);
         if (r.other_routers[msg.destiny_id].id == -1)
             continue;
+
         if (msg.sequence == NETWORK_SIZE)
             continue;
 
@@ -76,6 +82,8 @@ void *sender(void *args)
 
         port = r.other_routers[dest].network_info.port;
         ip = r.other_routers[dest].network_info.ip;
+
+        pthread_mutex_unlock(&r.other_routers_lock);
 
         si_other.sin_port = htons(port);
 

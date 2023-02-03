@@ -26,8 +26,10 @@ void *receiver(void *args)
         if ((recv_len = recvfrom(s, &msg, sizeof(message), 0, (struct sockaddr *)&si_other, &slen)) == -1)
             die("recvfrom()");
 
+        pthread_mutex_lock(&r.other_routers_lock);
         r.other_routers[msg.origin].last_update = time(NULL);
         r.other_routers[msg.sender].last_update = time(NULL);
+        pthread_mutex_unlock(&r.other_routers_lock);
 
         char log[100];
         sprintf(log, "Received packet from %d", msg.origin);
