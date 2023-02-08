@@ -68,11 +68,11 @@ void *sender(void *args)
             continue;
 
         pthread_mutex_lock(&r.other_routers_lock);
-        if (r.other_routers[msg.destiny_id].id == -1)
+        if (r.other_routers[msg.destiny_id].id == -1 || msg.sequence == NETWORK_SIZE)
+        {
+            pthread_mutex_unlock(&r.other_routers_lock);
             continue;
-
-        if (msg.sequence == NETWORK_SIZE)
-            continue;
+        }
 
         msg.sequence++;
         msg.sender = r.id;
