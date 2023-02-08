@@ -11,7 +11,7 @@ void *check_neighbors(void *arg)
         pthread_mutex_lock(&r.neighbor_list_lock);
         for (int_list *iterator = r.neighbor_list; iterator; iterator = iterator->next)
         {
-            if (difftime(time(NULL), r.other_routers[iterator->value].last_update) > TIME_OUT)
+            if (difftime(time(NULL), r.other_routers[iterator->value].last_update) > TIME_OUT && r.other_routers[iterator->value].id != -1)
             {
                 sprintf(log, "Neighbor %d disconnected\n", iterator->value);
                 write_to_log(log);
